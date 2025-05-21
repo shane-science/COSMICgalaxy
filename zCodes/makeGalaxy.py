@@ -3,11 +3,11 @@
 # MODIFIED:  17 Mar 2022 (v7)
 # --------------------------------------------------------------------
 # REQUIRES:
-#    -- MW_makerS2.py   (kmb, sll modded -- note "S2" in name)
-#    -- GW_calcs.py   (kmb)
+#    -- MW_maker_lw.py   (kmb, sll modded -- uses legwork, "_lw" name)
+#    -- legwork       http://legwork.readthedocs.io
 #    -- MC_samp.py   (kmb, from COSMIC 3.3)
 #    -- fixed population from COSMIC
-#    -- file  "gxModel.txt" with filenames and filepaths
+#    -- file  "cosmicRuntimeValues.txt" with filenames and filepaths
 # --------------------------------------------------------------------
 # VERSION NOTES
 #  -- v 0.0 [2021]
@@ -31,6 +31,8 @@
 # (4) (v8) Commented out all the LISA bits, since I post-process LISA with a
 #     C code. Will delete this all once confident it runs.  Also, GW_calcs and
 #     MC_samp not used here; they are used in MW_makerS2.py; comment them out?
+# (5) (gitCommit) 21 May 2025: debugged version, now runs throgh with WD,NS,BH
+#     now under git version control, filenames simplifed.
 #-----------------------------------------------------------------------------
 #
 # 10/31/2022
@@ -48,13 +50,8 @@
 #  Python imports
 # =============================
 
-# from cosmic import MC_samp
-# Extracted MC_samp from COSMIC 3.3 and included here as standalone file
-# import MC_samp
 import numpy as np
 import pandas as pd
-# import GW_calcs
-# import MW_makerN2
 import MW_maker_lw
 from scipy.interpolate import interp1d
 
@@ -85,19 +82,6 @@ c = 299792458.0     # SI units: m/s
 Msun = 1.9891e30    # SI units: kg
 parsec = 3.0856775814913673e16  # SI units: meters
 
-# =============================
-#  Setup LISA
-# =============================
-
-# SNR threshold for determining 'loud' sources
-# SNR_lim = 7
-
-# LISA Observation time (in years)
-# Tobs = 4
-
-# Create the LISA frequency bins + corresponding PSD
-# LISA_freq = np.arange(1e-7, 1e-1, 1/(Tobs*yr_sec))
-# LISA_PSD = GW_calcs.lisa_PSD()
 
 # =============================
 #  USER DEFINED QUANTITIES
@@ -119,15 +103,6 @@ dat_save_path = '../gx_data/'
 # ### change at runtime ###
 # plot_path = './plots/'
 
-# (sll) Inputs from *.ini file for filename construction
-#    Need to figure out a way to automate this; read in the ini files?
-#  (sll)[23 sept 2024] Read in these from gxModel.txt, then build the
-#    starFormation string from the numbers directly. Should be of the
-#    form  SFstart_STRTNumber_SFduration_DURnumber. EG:
-#          SFstart_13700.0_SFduration_0.0
-# ### change at runtime ###
-# SF_start = 13700.0         # Star Formation Startime in Myr
-# SF_duration = 0.0          # Star Formation Duration in Myr
 
 # ===========================================================
 #  (sll) READ IN RUNTIME METADATA FILE
@@ -337,15 +312,6 @@ if (flagONeBH == 1):
    kstarsRareName.append('BH_He_ONe')
 
 
-# for kstarII, kstarNameJJ in zip(kstars, kstarsName):
-#    for gx_componentII in gx_components:
-#        print('Component: {}, kstar: {}, kstarNmae: {}'.format(gx_componentII, kstarII, kstarNameJJ))
-
-# for kstarRareII, kstarRareNameJJ in zip(kstarsRare, kstarsRareName):
-#    for gx_componentII in gx_components:
-#        print('Component: {}, kstar: {}, kstarNmae: {}'.format(gx_componentII, kstarRareII, kstarRareNameJJ))
-
-
 # ====================================================================
 #  CREATE A MILKY WAY POPULATION
 #
@@ -378,7 +344,7 @@ for kstarII, kstarNameJJ in zip(kstars, kstarsName):
             dat_path = dat_path_1   # thin disk
             metComp = metThin
         
-        print('metComp = ',metComp,'\n',flush=True)
+        print(' metComp = ',metComp,'\n',flush=True)
 
         # Filename construction:
         #   dat_path      : read in from gxModel.txt, directory with fixed populations
@@ -432,9 +398,9 @@ for kstarII, kstarNameJJ in zip(kstars, kstarsName):
             conv.loc[swap_at_mask,["epoch_1","epoch_2"]] = conv.loc[swap_at_mask,["epoch_2","epoch_1"]].to_numpy()
             conv.loc[swap_at_mask,["bhspin_1","bhspin_2"]] = conv.loc[swap_at_mask,["bhspin_2","bhspin_1"]].to_numpy()
 
-        print('\nComponent: {}, kstar: {}'.format(gx_componentII, kstarNameJJ))
-        print('The size of the converged population is: {}'.format(len(conv)))
-        print('The total mass required to make the converged population is: {}'.format(m_sim_tot), flush=True)
+        print('\nComponent: {}\nkstar: {}'.format(gx_componentII, kstarNameJJ))
+        print('Number in converged population: {}'.format(len(conv)))
+        print('Total mass required to make converged population: {}'.format(m_sim_tot), flush=True)
         
         # (sll) -- here I modded the line where they construct the filename to output the galaxy
         # Note you can include all stars in the call to MW Maker by specifying 'all stars' as in this commented line:
@@ -475,7 +441,7 @@ for kstarII, kstarNameJJ in zip(kstarsRare, kstarsRareName):
             dat_path = dat_path_1   # thin disk
             metComp = metThin
     
-        print('metComp = ',metComp,'\n',flush=True)
+        print(' metComp = ',metComp,'\n',flush=True)
 
         # Filename construction:
         #  dat_path      : read in from gxModel.txt, directory with fixed populations
@@ -529,9 +495,9 @@ for kstarII, kstarNameJJ in zip(kstarsRare, kstarsRareName):
             conv.loc[swap_at_mask,["epoch_1","epoch_2"]] = conv.loc[swap_at_mask,["epoch_2","epoch_1"]].to_numpy()
             conv.loc[swap_at_mask,["bhspin_1","bhspin_2"]] = conv.loc[swap_at_mask,["bhspin_2","bhspin_1"]].to_numpy()
 
-        print('Component: {}, kstar: {}'.format(gx_componentII, kstarNameJJ))
-        print('The size of the converged population is: {}'.format(len(conv)))
-        print('The total mass required to make the converged population is: {}'.format(m_sim_tot), flush=True)
+        print('Component: {}\nkstar: {}'.format(gx_componentII, kstarNameJJ))
+        print('Number in converged population: {}'.format(len(conv)))
+        print('Total mass required to make converged population: {}'.format(m_sim_tot), flush=True)
         
         # (sll) -- here I modded the line where they construct the filename to output the galaxy
         # Note you can include all stars in the call to MW Maker by specifying 'all stars' as in this commented line:
