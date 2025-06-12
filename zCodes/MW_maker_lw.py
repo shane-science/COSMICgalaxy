@@ -13,7 +13,8 @@
 # GNU General Public License for more details.
 # --------------------------------------------------------------------
 # REQUIRES:
-#    -- GW_calcs.py   (same directory)
+#    -- GW_calcs.py   (same directory)  DEPRECATED
+#    -- Legwork       http://legwork.readthedocs.io
 # --------------------------------------------------------------------
 # VERSION AUTHOR :  Shane L. Larson (s.larson@northwestern.edu)
 #
@@ -25,7 +26,7 @@
 #     Made MC_samp as file to import, rather than from COSMIC
 #     also updated physical constants to be consistent with MC_samp
 #     CORRECTED ERROR IN PARSEC CONVERSION --> x10^16 meters (error was x10^19)
-#     thought it doesn't look like it is used anywhere...
+#     though it doesn't look like it is used anywhere...
 #
 # -----------------------------------------------------------------------
 # VERSION AUTHOR : Natalie Gottschlich (natalie.e.gottschlich@gmail.com)
@@ -49,6 +50,11 @@
 
 '''`MW_Maker`
 '''
+
+
+# =============================
+#  Python imports
+# =============================
 
 # from cosmic import MC_samp
 # Extracted MC_samp from COSMIC 3.3 and included here as standalone file
@@ -76,6 +82,7 @@ parsec = 3.0856775814913673e16  # SI units: meters
 
 # ==========================================================================
 # FUNCTION: wdRadius
+# AUTHOR  : Natalie Gottschlich
 # ==========================================================================
 
 # NG: Added this function 5/1 to calculate the radii
@@ -144,6 +151,8 @@ def porb_from_sep(m1, m2, sep):
 # work -- will evaluate how this is used later to do LISA band cutoffs
 # (that's what it looks like) and decide the right way to include/implement
 # it.
+# KMB says this is from Linqing Wen's paper:
+
 def peak_gw_freq(m1, m2, ecc, porb):
     """Computes the peak gravitational-wave frequency for an
     eccentric binary system. Units are SI
@@ -193,10 +202,16 @@ def SFH(n_pop, gx_component):
 
 
 # ==========================================================================
-# FUNCTION: t_evol_GW
+# FUNCTION: t_evol_GW    -- returns evolution under GW time in Myr
+#                        -- Assumes birth_time and formation_time
+#                           are in Myr
 # ==========================================================================
 
 def t_evol_GW(birth_time, formation_time, gx_component):
+
+    # import pdb
+    # pdb.set_trace()
+
     if gx_component == 'ThinDisk':
         # times in Myr following COSMIC
         t_evol_GW = 10000 - (birth_time + formation_time)
@@ -206,6 +221,10 @@ def t_evol_GW(birth_time, formation_time, gx_component):
     elif gx_component == 'ThickDisk':
         # times in Myr following COSMIC
         t_evol_GW = 11000 - (birth_time + formation_time)
+
+    # import pdb
+    # pdb.set_trace()
+
     return t_evol_GW
 
 
@@ -371,9 +390,14 @@ def GW_evol(pop):
                                                  a_i=sep[circ_ind])
 
 
-    ind_merge, = np.where(t_merge_circ < times[circ_ind]) #these have merged before today
+    ind_merge, = np.where(t_merge_circ < times[circ_ind]) # these have merged before today
     ind_alive, = np.where(t_merge_circ > times[circ_ind]) # these have not merged, so are DWD today
     sep_finalLW[circ_ind[ind_merge]] = 0.0
+    
+    # import pdb
+    # pdb.set_trace()
+
+    # print('Number of Merged Circ Systems = ',np.where(t_merge_circ < times[circ_ind]))
     
 # This is the old call to GW_calcs in MW_makerN2:
 #    sep_final[circ_ind[ind_alive]] = GW_calcs.peters_a_circ(a_0=sep[circ_ind[ind_alive]], 
@@ -393,10 +417,15 @@ def GW_evol(pop):
 
     ecc_final[circ_ind] = 0.0
 
-    # convert the separation back to Rsun  sll => not my comment; this looks like it is stated wrong...
-    # sep_final = sep_final/Rsun_au     # looks like convert value in solar radii back to AU
+    # convert the separation back to Rsun
+    # sep_final = sep_final/Rsun_au
     
-    sep_final = sep_finalLW.value   # this extracts the number without the unit; Legwork uses units, rest of codes do not
+    # import pdb
+    # pdb.set_trace()
+
+    sep_final = sep_finalLW.value   # this extracts the number without the unit
+                                    # Legwork uses units, rest of codes do not
+                                    # Legwork units for sep_final are: solRad
 
     return sep_final, ecc_final
 
@@ -409,40 +438,46 @@ def GW_evol(pop):
 def gx_sample(conv, gx_component, n_pop):
     # sample the Gx population and assign birth and GW evol times
     pop = conv.sample(n_pop, replace=True)
-    
+    print('Incoming population size is: ',len(pop))
+
     pop['t_birth'] = SFH(gx_component=gx_component, n_pop=n_pop)
+    print('tBirth population size is: ',len(pop))
     pop['t_evol_GW'] = t_evol_GW(birth_time=pop.t_birth,
-                                 formation_time=pop.tphys, 
+                                 formation_time=pop.tphys,
                                  gx_component=gx_component) # time need to evolve to today from creation of DWD
     
     # select out systems which haven't evolved yet
-    print('The size of the population is: ',len(pop))
+    print('Initial population size is: ',len(pop))
     pop = pop.loc[pop.t_evol_GW >= 0]  # takes everythng that makes a DWD
-    print('After removing non-evolved systems, the size of the population is: ',len(pop))
+    print('After removing non-evolved systems, pop size is: ',len(pop))
     
-    # import pdb
-    # pdb.set_trace()
-
     # evolve the systems according to Peters 64 evolution
     sep_final, ecc_final = GW_evol(pop)
     
     # import pdb
     # pdb.set_trace()
 
-    porb_final = porb_from_sep(m1=pop.mass_1, m2=pop.mass_2, sep=sep_final*Rsun_au)/day_yr # replace with legwork eventually
+    # porb_from_sep() returns orbital period in YRS, hence the  */day_yr
+    # to convert result to DAYS (std. cosmic units)
+    # The *Rsun_au takes the sep in Sol Radii and converts to AU
+    porb_final = porb_from_sep(m1=pop.mass_1, m2=pop.mass_2, sep=sep_final*Rsun_au)/day_yr
+    
     pop['sep_final'] = sep_final
     pop['ecc_final'] = ecc_final
     pop['porb_final'] = porb_final
+    
+    # import pdb
+    # pdb.set_trace()
 
     # select out those which have merged
-    print('The size of the population is: ',len(pop))
-    pop = pop.loc[(pop.sep_final > 0) & (pop.porb_final*86400 < 1e7)] # what is this? why are we cutting the second case?
-    print('After removing the merged systems, the size of the population is: ',len(pop))
+    # print('The size of the population is: ',len(pop))
+    pop = pop.loc[(pop.sep_final > 0) & (pop.porb_final*86400 < 1e7)] # why the second case? looks like a lisa cut?
+    print('After removing merged systems, pop size is: ',len(pop))
 
-    # select out those which fill roche lobes
-    
     #recalculate the radii of the WDs
     #These two lines added 5/1 (natGott)
+    # -----------------------------------------
+    # select out those which fill roche lobes
     if pop.kstar_1.isin([10,11,12]).all() and pop.kstar_2.isin([10,11,12]).all():
         pop['rad_1'] = wdRadius(pop['mass_1'])
         pop['rad_2'] = wdRadius(pop['mass_2'])
@@ -454,12 +489,14 @@ def gx_sample(conv, gx_component, n_pop):
     else:
         pop['RL_1_final'] = R_RL(pop.mass_1/pop.mass_2, pop.sep_final)
         pop = pop.loc[pop.rad_1 <= pop.RL_1_final]
+        print('kstar1 number with rstar < RL:',len(pop))
         
     if pop.kstar_2.isin([13,14]).all():
         pop = pop
     else:
         pop['RL_2_final'] = R_RL(pop.mass_2/pop.mass_1, pop.sep_final)
         pop = pop.loc[pop.rad_2 <= pop.RL_2_final]
+        print('kstar2 number with rstar < RL:',len(pop))
     
     # old call: pop['f_gw_peak'] = GW_calcs.peak_gw_freq()
     pop['f_gw_peak'] = peak_gw_freq(m1=pop.mass_1*2e30, 
@@ -502,15 +539,18 @@ def LISA_Galaxy(conv, gx_component, m_sim_tot, kstars, dat_write):
 
 # open an hdf file to hold the data
     dat_store = pd.HDFStore(dat_write)
-        
+    
+    # debugging
+    myCount = 0
+    
     if n_pop >= 5e5:
         pop_LISA = []
         # import pdb
         # pdb.set_trace()
         
-        for ii in range(0,100):
-            # do this in chunks for memory; ### sll changed 10 to 100 in line above and below
-            n_samp = int(n_pop/100)
+        for ii in range(0,1000):
+            # do this in chunks for memory; ### sll changed 10 to 100 in line above and below; changed 100 to 1000
+            n_samp = int(n_pop/1000)
             gx_samp = gx_sample(conv, gx_component, n_samp)
             pop_LISA = gx_samp.loc[gx_samp.f_gw_peak > 1e-5].copy()     # ### Make a cut, only keep f greater than listed value
             
@@ -526,10 +566,12 @@ def LISA_Galaxy(conv, gx_component, m_sim_tot, kstars, dat_write):
             
             print('Length pop = ',len(pop_LISA),'  ii = ',ii,flush=True)
             
+            myCount = myCount + len(pop_LISA)
+            
             dat_store.append('LISA_population', pop_LISA)
 
     else:
-        n_samp = n_pop
+        n_samp = n_pop # ***check this***
         gx_samp = gx_sample(conv, gx_component, n_samp)
         
         pop_LISA = gx_samp.loc[gx_samp.f_gw_peak > 1e-5].copy()    # ### Make a cut, only keep f greater than listed value
@@ -540,11 +582,14 @@ def LISA_Galaxy(conv, gx_component, m_sim_tot, kstars, dat_write):
         pop_LISA['yGx'] = yGx
         pop_LISA['zGx'] = zGx
         pop_LISA['dist'] = ((xGx - 8.0)**2 + (yGx - 0)**2 + (zGx - 0.027)**2)**0.5  # z offset correct 0.2 -> 0.027, sll 8 Nov 2023
+        myCount = myCount + len(pop_LISA)
         dat_store.append('LISA_population', pop_LISA)
 
     
     # make sure to close the dat file!
     dat_store.close()
+    
+    print('Final Count {0} binaries in {1} is: {2} '.format(kstars, gx_component, myCount),flush=True)
 
     #since we are writing to the file, we won't pass anything back
     return
