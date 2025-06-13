@@ -407,13 +407,21 @@ def GW_evol(pop):
 # Legwork tutorial example:
 #   a_evol = evol.evol_circ(m_1=m_1, m_2=m_2, f_orb_i=f_orb_i, output_vars="a")
 # 28 Apr 2025: added no.squeeze() to remove extraneous 1 dimensional array entry
-    
-    sep_finalLW[circ_ind[ind_alive]] = np.squeeze(legwork.evol.evol_circ(a_i=sep[circ_ind[ind_alive]],
+#    sep_finalLW[circ_ind[ind_alive]] = np.squeeze(legwork.evol.evol_circ(a_i=sep[circ_ind[ind_alive]],
+#                                                            m_1=m1[circ_ind[ind_alive]],
+#                                                            m_2=m2[circ_ind[ind_alive]],
+#                                                            t_evol=times[circ_ind[ind_alive]],
+#                                                            n_step=1,
+#                                                            output_vars="a"))
+
+    sep_out = np.squeeze(legwork.evol.evol_circ(a_i=sep[circ_ind[ind_alive]],
                                                             m_1=m1[circ_ind[ind_alive]],
                                                             m_2=m2[circ_ind[ind_alive]],
                                                             t_evol=times[circ_ind[ind_alive]],
-                                                            n_step=1,
+                                                            n_step=2,
                                                             output_vars="a"))
+                                                            
+    sep_finalLW[circ_ind[ind_alive]] = sep_out[:,1]       # kmb helped here, 12 Jun 2025
 
     ecc_final[circ_ind] = 0.0
 
