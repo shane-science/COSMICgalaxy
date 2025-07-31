@@ -238,11 +238,11 @@ print(" Converting .h5 galaxy files into .csv",
 #              'tacc_1', 'tacc_2', 'epoch_1', 'epoch_2',
 #              'bhspin_1', 'bhspin_2', 'RL_1_final', 'RL_2_final', 'f_gw_peak']
 
-# this set keeps the spin of the components; also keeps evol_type for Patti
+# this set keeps the spin of the components; also keeps evol_type for Patti, B_1 for Nycole
 reject_col = ['sep', 'porb', 'ecc', 'RRLO_1', 'RRLO_2', 'aj_1', 'aj_2', 'tms_1',
               'tms_2', 'massc_1', 'massc_2', 'mass0_1', 'mass0_2',
               'radc_1', 'radc_2', 'menv_1', 'menv_2', 'renv_1', 'renv_2',
-              'B_1', 'B_2', 'bacc_1', 'bacc_2',
+              'bacc_1', 'bacc_2',
               'tacc_1', 'tacc_2', 'epoch_1', 'epoch_2',
               'bhspin_1', 'bhspin_2', 'f_gw_peak']
 
