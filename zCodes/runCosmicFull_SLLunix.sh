@@ -52,7 +52,7 @@
 # ---------------------------------------------------------------
 
 NOW=$(date)
-echo "START TIME: $NOW"
+echo "COSMIC START TIME: $(date +"%a %d %b %Y  %I:%M:%S %p %Z")"
 echo "------------------------------"
 
 (( SECONDS = 0 ))          ## set time at start of script
@@ -95,9 +95,9 @@ echo
 
 echo "Fixed Populations complete."
 NOW=$(date)
-echo "FINISH TIME: $NOW"
+echo "FIXED FINISH TIME: $(date +"%a %d %b %Y  %I:%M:%S %p %Z")"
 (( durationFixed = $SECONDS ))       ## set time at end of fixed populations
-echo "FIXED RUNTIME = $(($durationFixed / 3600)) HR $(($durationFixed % 3600 % 60)) MIN"
+echo "FIXED RUNTIME = $(($durationFixed/86400)) DAY $((($durationFixed % 86400)/3600)) HR $(((($durationFixed % 86400)%3600)/60)) MIN $(((($durationFixed % 86400)%3600)%60)) SEC"
 echo
 echo "------------------------------"
 echo
@@ -120,9 +120,9 @@ python makeGalaxy.py >> ../errLogs/log02_Galaxy.log 2>> ../errLogs/err02_Galaxy.
 
 echo "Full Galaxy complete."
 NOW=$(date)
-echo "FINISH TIME: $NOW"
-(( durationGalaxy = $SECONDS ))       ## set time at end of galaxy production
-echo "GALAXY RUNTIME = $((($durationGalaxy - $durationFixed) / 3600)) HR $((($durationGalaxy - $durationFixed) % 3600 % 60)) MIN"
+echo "GALAXY FINISH TIME: $(date +"%a %d %b %Y  %I:%M:%S %p %Z")"
+(( durationGalaxy = $SECONDS - $durationFixed))  ## galaxy runtime in seconds
+echo "GALAXY RUNTIME = $(($durationGalaxy/86400)) DAY $((($durationGalaxy % 86400)/3600)) HR $(((($durationGalaxy % 86400)%3600)/60)) MIN $(((($durationGalaxy % 86400)%3600)%60)) SEC"
 echo
 echo "------------------------------"
 echo
@@ -139,9 +139,9 @@ python makeCOSMICcsv.py >> ../errLogs/log03_CSV.log 2>> ../errLogs/err03_CSV.log
 
 echo "CSV generation complete."
 NOW=$(date)
-echo "FINISH TIME: $NOW"
-(( durationCSV = $SECONDS ))       ## set time at end of csv creation
-echo "CSV RUNTIME = $((($durationCSV - $durationGalaxy) / 3600)) HR $((($durationCSV - $durationGalaxy) % 3600 % 60)) MIN"
+echo "CSV FINISH TIME: $(date +"%a %d %b %Y  %I:%M:%S %p %Z")"
+(( durationCSV = $SECONDS - $durationFixed - $durationGalaxy)) ## csv runtime in seconds
+echo "CSV RUNTIME = $(($durationCSV/86400)) DAY $((($durationCSV % 86400)/3600)) HR $(((($durationCSV % 86400)%3600)/60)) MIN $(((($durationCSV % 86400)%3600)%60)) SEC"
 echo
 echo "------------------------------"
 echo
@@ -160,9 +160,9 @@ gcc -lm ./gxProcess_COSMIC.c
 
 echo "LISA analysis complete."
 NOW=$(date)
-echo "FINISH TIME: $NOW"
-(( durationLISA = $SECONDS ))       ## set time at end of LISA analysis
-echo "LISA RUNTIME = $((($durationLISA - $durationCSV) / 3600)) HR $((($durationLISA - $durationCSV) % 3600 % 60)) MIN"
+echo "LISA FINISH TIME: $(date +"%a %d %b %Y  %I:%M:%S %p %Z")"
+(( durationLISA = $SECONDS - $durationFixed - $durationGalaxy - $durationCSV))      ## runtime LISA analysis in seconds
+echo "LISA RUNTIME = $(($durationLISA/86400)) DAY $((($durationLISA % 86400)/3600)) HR $(((($durationLISA % 86400)%3600)/60)) MIN $(((($durationLISA % 86400)%3600)%60)) SEC"
 echo
 echo "------------------------------"
 echo
@@ -172,10 +172,9 @@ echo
 # END OF SCRIPT
 # ---------------------------------------------------
 
-NOW=$(date)
-echo "FINISH TIME: $NOW"
+echo "COSMIC FINISH TIME: $(date +"%a %d %b %Y  %I:%M:%S %p %Z")"
 (( duration = $SECONDS ))            ## set time at end of script
-echo "TOTAL RUNTIME = $(($duration / 3600)) HR $(($duration % 3600 % 60)) MIN"
+echo "TOTAL RUNTIME = $(($duration/86400)) DAY $((($duration % 86400)/3600)) HR $(((($duration % 86400)%3600)/60)) MIN $(((($duration % 86400)%3600)%60)) SEC"
 echo
 echo "------------------------------"
 echo "All done!"
