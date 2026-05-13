@@ -3,7 +3,7 @@
 # ==========================================
 # Basename key for all files associated with this run
 
-Galaxy File (BASENAME no extension)     = gx_topaz
+Galaxy File (BASENAME no extension)     = gx_topazC
 
 
 # ==========================================
@@ -38,8 +38,8 @@ CO_CO [11,11]             = 1
 ONe_He_ONe [12,10,12]     = 1
 NS_He_ONe [13,10,12]      = 1
 BH_He_ONe  [14,10,12]     = 0
-NS_NS [13,13]             = 1
-BH_NS [14,13]             = 1
+NS_NS [13,13]             = 0
+BH_NS [14,13]             = 0
 BH_BH [14,14]             = 0
 
 
