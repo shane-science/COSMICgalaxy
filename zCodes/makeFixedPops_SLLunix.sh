@@ -358,7 +358,7 @@ echo
 echo "now working on NS+WD: 13 and 10,11,12..."
 (( duration1 = $SECONDS ))            ## time at start of population run
 
-cosmic-pop --final-kstar1 13 --final-kstar2 10 12 --inifile ../buildFiles/thin_Params.ini --Nstep 10000 --Niter 1000000000 -n 12 >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
+# cosmic-pop --final-kstar1 13 --final-kstar2 10 12 --inifile ../buildFiles/thin_Params.ini --Nstep 10000 --Niter 1000000000 -n 12 >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
 
 (( duration2 = $SECONDS - duration1))            ## time at end of population run and echo to screen
 echo "   RUNTIME NS+WD = $(($duration2/86400)) DAY $((($duration2 % 86400)/3600)) HR $(((($duration2 % 86400)%3600)/60)) MIN $(((($duration2 % 86400)%3600)%60)) SEC"
@@ -379,7 +379,7 @@ echo
 echo "now working on NS+NS: 13 and 13..."
 (( duration1 = $SECONDS ))            ## time at start of population run
 
-cosmic-pop --final-kstar1 13 --final-kstar2 13 --inifile ../buildFiles/thin_Params.ini --Nstep 10000 --Niter 1000000000 -n 12 >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
+# cosmic-pop --final-kstar1 13 --final-kstar2 13 --inifile ../buildFiles/thin_Params.ini --Nstep 10000 --Niter 1000000000 -n 12 >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
 
 (( duration2 = $SECONDS - duration1))            ## time at end of population run and echo to screen
 echo "   RUNTIME NS+NS = $(($duration2/86400)) DAY $((($duration2 % 86400)/3600)) HR $(((($duration2 % 86400)%3600)/60)) MIN $(((($duration2 % 86400)%3600)%60)) SEC"
@@ -390,7 +390,7 @@ echo
 echo "now working on BH+NS: 14 and 13..."
 (( duration1 = $SECONDS ))            ## time at start of population run
 
-cosmic-pop --final-kstar1 14 --final-kstar2 13 --inifile ../buildFiles/thin_Params.ini --Nstep 10000 --Niter 1000000000 -n 12 >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
+# cosmic-pop --final-kstar1 14 --final-kstar2 13 --inifile ../buildFiles/thin_Params.ini --Nstep 10000 --Niter 1000000000 -n 12 >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
 
 (( duration2 = $SECONDS - duration1))            ## time at end of population run and echo to screen
 echo "   RUNTIME NS+NS = $(($duration2/86400)) DAY $((($duration2 % 86400)/3600)) HR $(((($duration2 % 86400)%3600)/60)) MIN $(((($duration2 % 86400)%3600)%60)) SEC"
