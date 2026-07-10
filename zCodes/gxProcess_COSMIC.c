@@ -101,11 +101,11 @@ int main(void)
     //  ============= VARIABLE DECLARATIONS =============
     
     int ii, jj, kk, qq, rr;   //  looping indexes
-    int chirpFLAG, wdFLAG;
+    int chirpFLAG, wdFLAG, csvFLAG;
     int nCOL, nCURVE, nHBCURVE;
     int lineNum;
     
-    unsigned long int binNum, nCOUNT, nREAD, nBRIGHT, nMONOCHROME, nCHIRP;
+    unsigned long int binNum, nCOUNT, nREAD, nBRIGHT, nMONOCHROME, nCHIRP, nNS;
     int nYRS;
     double fgw, SNR, bigSNR;
     double *fL, *hfL, *fHB, *hfHB;
@@ -113,7 +113,7 @@ int main(void)
     double tphys, mass1, mass2, kstar1, kstar2, evolType;
     double sepFinal, eccFinal, Porb, fgwPeak;
     double xGx, yGx, zGx, dist;
-    double rad1, rad2, lum1, lum2, teff1, teff2, spin1, spin2, tbirth, tevGW;
+    double rad1, rad2, RRLO1, RRLO2, lum1, lum2, teff1, teff2, spin1, spin2, tbirth, tevGW;
     double magF1, magF2;
     
     double m1, m2, mc, dSI;
@@ -159,6 +159,7 @@ int main(void)
     nREAD = 0;
     nCOUNT = 0;
     nBRIGHT = 0;
+    nNS = 0;
     nMONOCHROME = 0;
     nCHIRP = 0;
     
@@ -186,7 +187,7 @@ int main(void)
         if (lineNum == 53) SNRthresh = parseTokenDouble(tmpRead,"=");  // THRESHOLD SNR for detection
         if (lineNum == 54) ALPHA = parseTokenDouble(tmpRead,"=");      // CHIRP THRESHOLD -- number of bins for Tobs which is detectable
         if (lineNum == 55) wdFLAG = parseTokenInt(tmpRead,"=");        // 0 = NO WD;   1 = Cornish Robson;    2 = HLRK;    3 = Hils Bender
-
+        if (lineNum == 56) csvFLAG = parseTokenInt(tmpRead,"=");       // 0 = single files for all sources; 1 = separate files by kstar value
     }
     fclose(myFile);
 
@@ -376,7 +377,7 @@ int main(void)
     printf("\n Start Time   : %s\n",timeBuffer1);
 
     // --- output headers ------
-    fprintf(gxRunData,"# CODE: gxProcess_COSMIC_2022.c    sll, June 2023\n");
+    fprintf(gxRunData,"# CODE: gxProcess_COSMIC_2026vLS.c    sll, June 2023\n");
     fprintf(gxRunData,"#\n");
     fprintf(gxRunData,"# Galaxy Input File: %s.csv\n",basename);
     fprintf(gxRunData,"#\n");
@@ -384,21 +385,22 @@ int main(void)
     fprintf(gxRunData,"# binNum, gxComponent, mass1(mSun), mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),r(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
 
     
-    // --- print headers to files ---
-    fprintf(gxConfused,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
-    fprintf(gxMonochrome,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
-    fprintf(gxChirp,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
-    fprintf(gxResolved,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
-    fprintf(gxNS,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
-    fprintf(gxNSbright,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
+    // --- print headers to files --------------------------
+    // --- just echoes of the direct gx file from cosmic ---
+    fprintf(gxConfused,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,RRLO_1,RRLO_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
+    fprintf(gxMonochrome,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,RRLO_1,RRLO_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
+    fprintf(gxChirp,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,RRLO_1,RRLO_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
+    fprintf(gxResolved,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,RRLO_1,RRLO_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
+    fprintf(gxNS,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,RRLO_1,RRLO_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
+    fprintf(gxNSbright,"#bin_num,tphys,mass_1(Msun),mass_2(Msun),kstar_1,kstar_2,RRLO_1,RRLO_2,evol_type,rad_1(Rsun),rad_2(Rsun),lum_1(Lsun),lum_2(Lsun),teff_1(K),teff_2(K),omega_spin_1(yr^-1),omega_spin_2(yr^-1),B_1(Gauss),B_2(Gauss),t_birth,t_evol_GW,sep_final(Rsun),ecc_final,porb_final(day),xGx(kpc),yGx(kpc),zGx(kpc),dist(kpc),gxComponent\n");
 
-
-    fprintf(sllConfused,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
-    fprintf(sllMonochrome,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
-    fprintf(sllChirp,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
-    fprintf(sllResolved,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
-    fprintf(sllNS,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
-    fprintf(sllNSbright,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
+    // -- these are my processed files with my own columns and units --
+    fprintf(sllConfused,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),RRLO1,RRLO2,B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
+    fprintf(sllMonochrome,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),RRLO1,RRLO2,B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
+    fprintf(sllChirp,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),RRLO1,RRLO2,B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
+    fprintf(sllResolved,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),RRLO1,RRLO2,B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
+    fprintf(sllNS,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),RRLO1,RRLO2,B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
+    fprintf(sllNSbright,"# binNum,gxComponent,kstar1,kstar2,mass1(mSun),mass2(mSun),lum1(Lsun),lum2(Lsun),Teff1(K),Teff2(K),rad_1(Rsun),rad_2(Rsun),RRLO1,RRLO2,B1(Gauss),B2(Gauss),spin1(rad/yr),spin2(rad/yr),Porb(s),xGx(pc),yGx(pc),zGx(pc),D(pc),fgw(Hz),fdot(Hz/s),ho,hf(per rtHz),SNR\n");
 
 
     // -------------------------------------------------------------------------
@@ -425,7 +427,7 @@ int main(void)
 
 
     // --- galaxy file read initilization data
-    nCOL = 28;                                // number of columns in cosmic galaxy CSV file
+    nCOL = 29;                                // number of columns in cosmic galaxy CSV file
     tString = '#';                            // header line intro character for search
     
     // --- read in galaxy data file, echo header lines to process files
@@ -451,34 +453,40 @@ int main(void)
                 if (qq == 5) kstar2 = atof(tokenParse);     // col  5 = kstar
                 if (qq == 6) evolType = atof(tokenParse);   // col  6 = evol_type
 
-                if (qq == 7) rad1 = atof(tokenParse);       // col  7 = radius 1 (Rsun)
-                if (qq == 8) rad2 = atof(tokenParse);       // col  8 = radius 2 (Rsun)
+                if (qq == 7) RRLO1 = atof(tokenParse);       // col  7 = RRLO 1 (Rsun)
+                if (qq == 8) RRLO2 = atof(tokenParse);       // col  8 = RRLO 2 (Rsun)
 
-                if (qq == 9) lum1 = atof(tokenParse);       // col  7 = luminosity 1 (Lsun)
-                if (qq == 10) lum2 = atof(tokenParse);       // col  8 = luminosity 2 (Lsun)
-                if (qq == 11) teff1 = atof(tokenParse);      // col  9 = Teff 1 (K)
-                if (qq == 12) teff2 = atof(tokenParse);      // col  10 = Teff 2 (K)
-                if (qq == 13) spin1 = atof(tokenParse);     // col  11 = omega spin 1 (rad/yr)
-                if (qq == 14) spin2 = atof(tokenParse);     // col  12 = omega spin 2 (rad/yr)
-                if (qq == 15) magF1 = atof(tokenParse);     // col  13 = B field 1 (Gauss)
-                if (qq == 16) magF2 = atof(tokenParse);     // col  14 = B field 1 (Gauss)
-                if (qq == 17) tbirth = atof(tokenParse);    // col  15 = tbirth (Myr)
-                if (qq == 18) tevGW = atof(tokenParse);     // col  16 = tevolveGW (Myr)
+                if (qq == 9) rad1 = atof(tokenParse);       // col  7 = radius 1 (Rsun)
+                if (qq == 10) rad2 = atof(tokenParse);       // col  8 = radius 2 (Rsun)
 
-                if (qq == 19) sepFinal = atof(tokenParse);  // col  17 = separation (Rsun)
-                if (qq == 20) eccFinal = atof(tokenParse);  // col  18 = eccentricity
-                if (qq == 21) Porb = atof(tokenParse);      // col  19 = orbital period (days)
-                if (qq == 22) xGx = atof(tokenParse);       // col  20 = galactocentric (kpc)
-                if (qq == 23) yGx = atof(tokenParse);       // col  22 = galactocentric (kpc)
-                if (qq == 24) zGx = atof(tokenParse);       // col  22 = galactocentric (kpc)
-                if (qq == 25) dist = atof(tokenParse);      // col  23 = Distance from Sun (kpc)
-                if (qq == 26) strcpy(gxComp,tokenParse);    // col  24 = gx Component: ThinDisk,ThickDisk,Bulge
-                if (qq == 27) gxComp[strcspn(gxComp, "\r\n")] = 0;  //removes trailing carriage return
+                if (qq == 11) lum1 = atof(tokenParse);       // col  7 = luminosity 1 (Lsun)
+                if (qq == 12) lum2 = atof(tokenParse);       // col  8 = luminosity 2 (Lsun)
+                if (qq == 13) teff1 = atof(tokenParse);      // col  9 = Teff 1 (K)
+                if (qq == 14) teff2 = atof(tokenParse);      // col  10 = Teff 2 (K)
+                if (qq == 15) spin1 = atof(tokenParse);     // col  11 = omega spin 1 (rad/yr)
+                if (qq == 16) spin2 = atof(tokenParse);     // col  12 = omega spin 2 (rad/yr)
+                if (qq == 17) magF1 = atof(tokenParse);     // col  13 = B field 1 (Gauss)
+                if (qq == 18) magF2 = atof(tokenParse);     // col  14 = B field 1 (Gauss)
+                if (qq == 19) tbirth = atof(tokenParse);    // col  15 = tbirth (Myr)
+                if (qq ==20) tevGW = atof(tokenParse);     // col  16 = tevolveGW (Myr)
+
+                if (qq == 21) sepFinal = atof(tokenParse);  // col  17 = separation (Rsun)
+                if (qq == 22) eccFinal = atof(tokenParse);  // col  18 = eccentricity
+                if (qq == 23) Porb = atof(tokenParse);      // col  19 = orbital period (days)
+                if (qq == 24) xGx = atof(tokenParse);       // col  20 = galactocentric (kpc)
+                if (qq == 25) yGx = atof(tokenParse);       // col  22 = galactocentric (kpc)
+                if (qq == 26) zGx = atof(tokenParse);       // col  22 = galactocentric (kpc)
+                if (qq == 27) dist = atof(tokenParse);      // col  23 = Distance from Sun (kpc)
+                if (qq == 28) 
+                {
+                    strcpy(gxComp,tokenParse);             // col  24 = gx Component: ThinDisk,ThickDisk,Bulge
+                    gxComp[strcspn(gxComp, "\r\n")] = 0;  //removes trailing carriage return
+                }
 
             }
 
             nREAD++;    // increase count of read binaries
-            nCOUNT++;   // increment successul read counter --> for SCREEN PROGRESS OUTPUT at end of this loop
+            nCOUNT++;   // increment successful read counter --> for SCREEN PROGRESS OUTPUT at end of this loop
             
             // ---- do the GW calculation from the source parameters ------------------
             // ------------------------------------------------------------------------
@@ -604,7 +612,7 @@ int main(void)
             // the output to all the files is THE SAME, just directed based on values, so make the line ONCE, to make output
             // and maintenance simpler -- use SPRINTF() -- there are 20 output columns
             
-            sprintf(csvOutputLine,"%ld,%s,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g",binNum,gxComp,kstar1,kstar2,mass1,mass2,lum1,lum2,teff1,teff2,rad1,rad2,magF1,magF2,spin1,spin2,Porb*86400.0,xGx*1000.0,yGx*1000.0,zGx*1000.0,dist*1000.0,fgw,fdot,ho,hfSRC,SNR);
+            sprintf(csvOutputLine,"%ld,%s,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g",binNum,gxComp,kstar1,kstar2,mass1,mass2,lum1,lum2,teff1,teff2,rad1,rad2,RRLO1,RRLO2,magF1,magF2,spin1,spin2,Porb*86400.0,xGx*1000.0,yGx*1000.0,zGx*1000.0,dist*1000.0,fgw,fdot,ho,hfSRC,SNR);
             
             //  If a source beats the request threshold, then store it and ouput data
             if (SNR > SNRthresh)
@@ -634,6 +642,7 @@ int main(void)
                 {
                     fprintf(gxNSbright,"%s",cosmicOutputLine);
                     fprintf(sllNSbright,"%s\n",csvOutputLine);
+                    nNS++;   // increase count of brightNS sources
                 }
             }
             else
@@ -694,6 +703,7 @@ int main(void)
     fprintf(gxRunData,"TOTAL RESOLVED    = %ld\n",nBRIGHT);
     fprintf(gxRunData,"TOTAL MONOCHROME  = %ld\n",nMONOCHROME);
     fprintf(gxRunData,"TOTAL CHIRPING    = %ld\n",nCHIRP);
+    fprintf(gxRunData,"TOTAL BRIGHT NS   = %ld\n",nNS);
 
     fclose(gxRunData);
     
@@ -702,6 +712,11 @@ int main(void)
     printf("TOTAL RESOLVED    = %ld\n",nBRIGHT);
     printf("TOTAL MONOCHROME  = %ld\n",nMONOCHROME);
     printf("TOTAL CHIRPING    = %ld\n",nCHIRP);
+    printf("TOTAL BRIGHT NS   = %ld\n",nNS);
+    printf("\n ========================================== \n");
+
+    printf("End Time     : %s\n",timeBuffer2);
+    printf("Elapsed Time : %02d h %02d m %02d s\n",(int)elapsedTime/3600,((int)elapsedTime % 3600)/60,(int)elapsedTime%60);    
     printf("\n ========================================== \n");
     printf("\n\nALL DONE!  Whoo hoo!\n");
     
