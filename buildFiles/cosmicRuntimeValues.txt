@@ -3,7 +3,7 @@
 # ==========================================
 # Basename key for all files associated with this run
 
-Galaxy File (BASENAME no extension)     = gx_topazC
+Galaxy File (BASENAME no extension)     = gx_topazE
 
 
 # ==========================================
@@ -38,7 +38,7 @@ CO_CO [11,11]             = 1
 ONe_He_ONe [12,10,12]     = 1
 NS_He_ONe [13,10,12]      = 1
 BH_He_ONe  [14,10,12]     = 0
-NS_NS [13,13]             = 0
+NS_NS [13,13]             = 1
 BH_NS [14,13]             = 0
 BH_BH [14,14]             = 0
 
@@ -52,6 +52,8 @@ Sensitivity Curve FILENAME              = ../lisaFiles/LISA2018_esaSTD.csv
 Tobs (YRS)                              = 4
 SNR Threshold                           = 5.0
 ALPHA (Fraction of bin for Chirp)       = 0.5
-wdFLAG (0: none, 1: CR, 2: HLRK, 3: HB) = 0
+wdFLAG (0: none, 1: CR, 2: HLRK, 3: HB) = 1
+csvFLAG (0: no src sep; 1: sep by type) = 1
+
 
 
