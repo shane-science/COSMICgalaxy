@@ -29,6 +29,9 @@
 //               is a collected file with all parameters for a given
 //               COSMIC run, rather than two files.
 //
+//  2026 Nov 24: Streamlined read from cosmicRuntimeValues.txt; should be
+//               more robust against future changes in cosmicRuntime values
+//
 //  DESCRIPTION
 //  ----------------------------------------------------------------
 //   This program looks through a processed COSMIC galaxy, and computes
@@ -174,20 +177,35 @@ int main(void)
     if ((myFile = fopen("../buildFiles/cosmicRuntimeValues.txt","r")) == 0)
         ErrorExit("main","File   cosmicRuntimeValues.txt  NOT FOUND");
     
-    lineNum = 0;
     while (fgets(tmpRead,MAX_LENGTH + 1,myFile))  //  as long as not at EOF
     {
-        lineNum++;
         myLine = tmpRead;                        // set up string for token parsing
+        while ((*myLine == ' ') || (*myLine == '\t')) myLine++;  // skip leading whitespace
         
-        if (lineNum == 6) parseTokenString(basename,tmpRead,"=");
-        if (lineNum == 51) parseTokenString(sensitivityFilename,tmpRead,"=");
+        // skip blank lines and comment lines starting with #
+        if ((*myLine == '#') || (*myLine == '\n') || (*myLine == '\r') || (*myLine == '\0'))
+            continue;
         
-        if (lineNum == 52) nYRS = parseTokenLong(tmpRead,"=");         // Tobs
-        if (lineNum == 53) SNRthresh = parseTokenDouble(tmpRead,"=");  // THRESHOLD SNR for detection
-        if (lineNum == 54) ALPHA = parseTokenDouble(tmpRead,"=");      // CHIRP THRESHOLD -- number of bins for Tobs which is detectable
-        if (lineNum == 55) wdFLAG = parseTokenInt(tmpRead,"=");        // 0 = NO WD;   1 = Cornish Robson;    2 = HLRK;    3 = Hils Bender
-        if (lineNum == 56) csvFLAG = parseTokenInt(tmpRead,"=");       // 0 = single files for all sources; 1 = separate files by kstar value
+        // this new structure replaces the old hard-coded linenumber structure. Now it looks
+        // for the key text (the human readable line description in cosmicRuntimeValues.txt)
+        // and then does the usual parse around the = sign. This should be robust against
+        // new lines being added to cosmicRuntimeValues.txt or the line order or line numbers
+        // where data is located change. 
+        
+        if (strncmp(myLine,"Galaxy File (BASENAME no extension)",strlen("Galaxy File (BASENAME no extension)")) == 0)
+            parseTokenString(basename,myLine,"=");
+        else if (strncmp(myLine,"Sensitivity Curve FILENAME",strlen("Sensitivity Curve FILENAME")) == 0)
+            parseTokenString(sensitivityFilename,myLine,"=");
+        else if (strncmp(myLine,"Tobs (YRS)",strlen("Tobs (YRS)")) == 0)
+            nYRS = parseTokenLong(myLine,"=");         // Tobs
+        else if (strncmp(myLine,"SNR Threshold",strlen("SNR Threshold")) == 0)
+            SNRthresh = parseTokenDouble(myLine,"=");  // THRESHOLD SNR for detection
+        else if (strncmp(myLine,"ALPHA",strlen("ALPHA")) == 0)
+            ALPHA = parseTokenDouble(myLine,"=");      // CHIRP THRESHOLD -- number of bins for Tobs which is detectable
+        else if (strncmp(myLine,"wdFLAG",strlen("wdFLAG")) == 0)
+            wdFLAG = parseTokenInt(myLine,"=");        // 0 = NO WD;   1 = Cornish Robson;    2 = HLRK;    3 = Hils Bender
+        else if (strncmp(myLine,"csvFLAG",strlen("csvFLAG")) == 0)
+            csvFLAG = parseTokenInt(myLine,"=");       // 0 = single files for all sources; 1 = separate files by kstar value
     }
     fclose(myFile);
 
@@ -610,7 +628,7 @@ int main(void)
             if (SNR > bigSNR) bigSNR = SNR; //  store biggest SNR
             
             // the output to all the files is THE SAME, just directed based on values, so make the line ONCE, to make output
-            // and maintenance simpler -- use SPRINTF() -- there are 20 output columns
+            // and maintenance simpler -- use SPRINTF() -- there are 28 output columns
             
             sprintf(csvOutputLine,"%ld,%s,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g,%15.7g",binNum,gxComp,kstar1,kstar2,mass1,mass2,lum1,lum2,teff1,teff2,rad1,rad2,RRLO1,RRLO2,magF1,magF2,spin1,spin2,Porb*86400.0,xGx*1000.0,yGx*1000.0,zGx*1000.0,dist*1000.0,fgw,fdot,ho,hfSRC,SNR);
             
