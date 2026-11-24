@@ -255,8 +255,18 @@ print("sllUNIX Flag           = ", sllUNIX, "\n", flush=True)
 # ===========================================================
 # The different subpopulations
 # ===========================================================
-gx_components = ['ThinDisk', 'Bulge', 'ThickDisk']
-gxc_labels = ['Thin Disk', 'Bulge', 'Thick Disk'] # was gx_component_labels
+gx_components = []  # empty list to start building our galaxy components
+gxc_labels = []     # empty list for our component labels; was gx_component_labels
+
+if (makeThinDisk == 1):
+    gx_components.append('ThinDisk')
+    gxc_labels.append('Thin Disk')
+if (makeBulge == 1):
+    gx_components.append('Bulge')
+    gxc_labels.append('Bulge')
+if (makeThickDisk == 1):
+    gx_components.append('ThickDisk')
+    gxc_labels.append('Thick Disk')
 
 kstars = []                                  # empty list to start building our populations list
 kstarsName = []                              # empty list for population names
