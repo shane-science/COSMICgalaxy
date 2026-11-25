@@ -72,6 +72,8 @@ mkdir ../fixed
 
 mkdir ../gx_data
 
+mkdir ../errLogs
+
 mkdir ../csv
 
 mkdir ../fixed/fixed_bulge

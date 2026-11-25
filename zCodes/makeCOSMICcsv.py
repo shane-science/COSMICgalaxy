@@ -36,6 +36,9 @@
 #  -- (v3) 17 Mar 2022: updated to run with auto script, so points up to
 #      needed directories.
 #
+#  -- (v4) Updated runtime parser to dynamically read all non-comment
+#      key = value lines from cosmicRuntimeValues.txt into a dictionary.
+#
 # --------------------------------------------------------------------
 
 ''' `makeCOSMICcsv`
@@ -120,6 +123,21 @@ import pandas as pd
 # -----------------------------
 
 from time import time, ctime
+
+
+# -----------------------------
+# HELPER FUNCTIONS
+# -----------------------------
+
+def parse_runtime_value(val_str):
+    """Convert a stripped value string from the input file into int, float, or str."""
+    try:
+        return int(val_str)             # try integer first (flags, seeds, integer years)
+    except ValueError:
+        try:
+            return float(val_str)       # next try float (times, metallicities, thresholds)
+        except ValueError:
+            return val_str              # otherwise keep as string (names, filepaths)
 
 
 # -----------------------------
@@ -239,13 +257,21 @@ print(" Converting .h5 galaxy files into .csv",
 #              'bhspin_1', 'bhspin_2', 'RL_1_final', 'RL_2_final', 'f_gw_peak']
 
 # this set keeps the spin of the components; also keeps evol_type for Patti, B_1 for Nycole
-reject_col = ['sep', 'porb', 'ecc', 'RRLO_1', 'RRLO_2', 'aj_1', 'aj_2', 'tms_1',
+# reject_col = ['sep', 'porb', 'ecc', 'RRLO_1', 'RRLO_2', 'aj_1', 'aj_2', 'tms_1',
+#              'tms_2', 'massc_1', 'massc_2', 'rad_1', 'rad_2', 'mass0_1', 'mass0_2',
+#              'radc_1', 'radc_2', 'menv_1', 'menv_2', 'renv_1', 'renv_2',
+#              'bacc_1', 'bacc_2',
+#              'tacc_1', 'tacc_2', 'epoch_1', 'epoch_2',
+#              'bhspin_1', 'bhspin_2', 'f_gw_peak']
+
+
+# this set keeps the spin of the components; evol_type, B_1, and RRLO radii
+reject_col = ['sep', 'porb', 'ecc', 'aj_1', 'aj_2', 'tms_1',
               'tms_2', 'massc_1', 'massc_2', 'mass0_1', 'mass0_2',
               'radc_1', 'radc_2', 'menv_1', 'menv_2', 'renv_1', 'renv_2',
               'bacc_1', 'bacc_2',
               'tacc_1', 'tacc_2', 'epoch_1', 'epoch_2',
               'bhspin_1', 'bhspin_2', 'f_gw_peak']
-
 
 # ===========================================================
 #  (sll) READ IN GALAXY METADATA FILE
@@ -255,7 +281,8 @@ reject_col = ['sep', 'porb', 'ecc', 'RRLO_1', 'RRLO_2', 'aj_1', 'aj_2', 'tms_1',
 #with open('../buildFiles/gxProcessInputs.txt','r') as gxProcess:
 #    dataLine = gxProcess.readline()           # read in dataline
 #    parseLine = dataLine.split("=")           # parses line around the = sign
-#    basename = str(parseLine[-1]).strip()     # rstrip removes trailing \n
+#    basename = str(parseLine[-1]).strip()     # rstrip removes trailing 
+
 #    print("Galaxy Basename  = ", basename)    # echo to screen
 
 
@@ -268,171 +295,127 @@ reject_col = ['sep', 'porb', 'ecc', 'RRLO_1', 'RRLO_2', 'aj_1', 'aj_2', 'tms_1',
 # ===========================================================
 #  (sll) READ IN GALAXY METADATA FILE
 #    Looks for the file "cosmicRuntimeValues.txt" which has
-#    basefilename for this galaxy run and populations used
+#    basefilename for this galaxy run and populations used.
+#    Skips blank lines and lines starting with '#', parses
+#    key = value pairs, and stores all RHS values in a dict.
 # ===========================================================
 
 startRun = time()  # get the starting time in seconds for elapsed time calculation
 print('\n==================================\n')
 print('Starting run at: ',ctime(time()))
 
-# get the data for filename building from the galaxy model file
+# Dictionary to store every parsed key-value pair from cosmicRuntimeValues.txt
+runtimeVals = {}
 
-with open('../buildFiles/cosmicRuntimeValues.txt','r') as gxInputs:
-    # First, read in the basename for all files in this run
-    dataLine = gxInputs.readline()  # read 1 line -- 1st comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 2nd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 3rd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 4th comment line
-    dataLine = gxInputs.readline()  # read blankline
-    dataLine = gxInputs.readline()           # read in dataline
-    parseLine = dataLine.split("=")           # parses line around the = sign
-    basename = str(parseLine[-1]).strip()     # rstrip removes trailing \n
-    print("Galaxy Basename  = ", basename)    # echo to screen
+with open('../buildFiles/cosmicRuntimeValues.txt', 'r') as gxInputs:
+    for rawLine in gxInputs:
+        cleanLine = rawLine.strip()                     # strip leading/trailing whitespace and \n
 
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read blankline
+        if not cleanLine or cleanLine.startswith('#'):  # skip blank lines and '#' comment lines
+            continue
 
-    # Next, reading in the inputs for the galaxy model
-    dataLine = gxInputs.readline()  # read 1 line -- 1st comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 2nd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 3rd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 4th comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 5th comment line
+        if '=' in cleanLine:
+            key, val = cleanLine.split('=', 1)          # split only on the first '=' sign
+            key = ' '.join(key.split())                 # normalize extra internal spaces in label
+            val = val.strip()                           # remove whitespace around RHS value
+            runtimeVals[key] = parse_runtime_value(val) # convert type and store in dictionary
 
-    # Star Formation Lines ----------------------------------
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read in dataline
-    parseLine = dataLine.split("=")         # parses line around the = sign
-    SF_start = float(parseLine[-1])         # store the number
-    print("SF Start (Myr)   = ", SF_start)  # echo to screen
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    SF_duration = float(parseLine[-1])
-    print("SF Duration (Myr)   = ", SF_duration)
-   
-    starFormation = 'SFstart_' + str(SF_start)  + '_SFduration_' +  str(SF_duration)     # construct the filename bit with Star Formation
-    print("Star Formation file tag  = ", starFormation)
-    
-    dataLine = gxInputs.readline()          # read blankline
+# -----------------------------------------------------------
+# Unpack parsed values into named variables for downstream use
+# (All values remain accessible in runtimeVals['...'] as well)
+# -----------------------------------------------------------
 
-    # Metallicities ----------------------------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    metThin = float(parseLine[-1])
-    print("Thin Disk Metallicity   = ", metThin)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    metBulge = float(parseLine[-1])
-    print("Bulge Metallicity       = ", metBulge)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    metThick = float(parseLine[-1])
-    print("Thick Disk Metallicity  = ", metThick)
-    
-    dataLine = gxInputs.readline()          # read blankline
+# Basename --------------------------------------------------
+basename = runtimeVals['Galaxy File (BASENAME no extension)']
+print("Galaxy Basename  = ", basename)                  # echo to screen
 
-    # Pathways to Fixed Population Files ---------------------
-    dataLine = gxInputs.readline()          # read in dataline
-    parseLine = dataLine.split("=")         # parses line around the = sign
-    dat_path_1 = str(parseLine[-1]).strip() # rstrip removes trailing \n
-    print("thin disk PATH  = ", dat_path_1) # echo to screen
-    
-    dataLine = gxInputs.readline()          # read blankline
-    parseLine = dataLine.split("=")
-    dat_path_2 = str(parseLine[-1]).strip()
-    print("bulge PATH      = ", dat_path_2)
-    
-    dataLine = gxInputs.readline()          # read blankline
-    parseLine = dataLine.split("=")
-    dat_path_3 = str(parseLine[-1]).strip()
-    print("thick disk PATH = ", dat_path_3)
-    
-    dataLine = gxInputs.readline()          # read blankline
+# Star Formation Lines --------------------------------------
+SF_start = runtimeVals['SF start (Myr)']
+print("SF Start (Myr)   = ", SF_start)
 
-    # Galaxy Generation RANDOM SEED ---------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    gxSeed = int(parseLine[-1])
-    print("galaxy generation random seed  = ", gxSeed)
-    print("fixed pop info retrieved\n", flush=True) # flush -- force stdout so I know its running
+SF_duration = runtimeVals['SF duration (Myr)']
+print("SF Duration (Myr)   = ", SF_duration)
 
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read blankline
+starFormation = 'SFstart_' + str(SF_start) + '_SFduration_' + str(SF_duration) # construct filename bit with Star Formation
+print("Star Formation file tag  = ", starFormation)
 
-    # Next, reading in the inputs for the sub-populations
-    dataLine = gxInputs.readline()  # read 1 line -- 1st comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 2nd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 3rd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 4th comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 5th comment line
-    
-    dataLine = gxInputs.readline()          # read blankline
+# Metallicities ---------------------------------------------
+metThin  = runtimeVals['thinDisk metal']
+metBulge = runtimeVals['bulge metal']
+metThick = runtimeVals['thickDisk metal']
+print("Thin Disk Metallicity   = ", metThin)
+print("Bulge Metallicity       = ", metBulge)
+print("Thick Disk Metallicity  = ", metThick)
 
-    # Common White Dwarf Combos ------------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagHeHe = int(parseLine[-1])
-    print("He_He Flag  = ", flagHeHe)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagCoHe = int(parseLine[-1])
-    print("CO_He Flag  = ", flagCoHe)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagCoCo = int(parseLine[-1])
-    print("CO_CO Flag  = ", flagCoCo)
-    
-    # Less Common White Dwarf Combos -------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagONeWD = int(parseLine[-1])
-    print("ONe_He_ONe Flag  = ", flagONeWD)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagONeNS = int(parseLine[-1])
-    print("NS_He_ONe Flag  = ", flagONeNS)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagONeBH = int(parseLine[-1])
-    print("BH_He_ONe Flag  = ", flagONeBH)
+# Pathways to Fixed Population Files ------------------------
+dat_path_1 = runtimeVals['thinDisk Path']
+dat_path_2 = runtimeVals['bulge Path']
+dat_path_3 = runtimeVals['thickDisk Path']
+print("thin disk PATH  = ", dat_path_1)
+print("bulge PATH      = ", dat_path_2)
+print("thick disk PATH = ", dat_path_3)
 
-    # Heavy Remnant Combos ------------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagNSNS = int(parseLine[-1])
-    print("NS_NS Flag  = ", flagNSNS)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagBHNS = int(parseLine[-1])
-    print("BH_NS Flag  = ", flagBHNS)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagBHBH = int(parseLine[-1])
-    print("BH_BH Flag  = ", flagBHBH)
+# Galaxy Generation RANDOM SEED and Component Flags ---------
+gxSeed        = runtimeVals['random Seed']
+makeBulge     = runtimeVals['makeBulge']
+makeThinDisk  = runtimeVals['makeThinDisk']
+makeThickDisk = runtimeVals['makeThickDisk']
+print("galaxy generation random seed  = ", gxSeed)
+print("Component Flags (Bulge, ThinDisk, ThickDisk) = ", makeBulge, makeThinDisk, makeThickDisk)
+print("fixed pop info retrieved\n", flush=True)         # flush -- force stdout so I know its running
 
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read blankline
+# Common White Dwarf Combos ---------------------------------
+flagHeHe = runtimeVals['He_He [10,10]']
+flagCoHe = runtimeVals['CO_He [11,10]']
+flagCoCo = runtimeVals['CO_CO [11,11]']
+print("He_He Flag  = ", flagHeHe)
+print("CO_He Flag  = ", flagCoHe)
+print("CO_CO Flag  = ", flagCoCo)
 
-    # Next, reading in the LISA Processing Specifications
-    # No read here; currently not used in python scripts
-    # FUTURE PLAN: Make calling Legwork an option?
+# Less Common White Dwarf Combos ----------------------------
+flagONeWD = runtimeVals['ONe_He_ONe [12,10,12]']
+flagONeNS = runtimeVals['NS_He_ONe [13,10,12]']
+flagONeBH = runtimeVals['BH_He_ONe [14,10,12]']
+print("ONe_He_ONe Flag  = ", flagONeWD)
+print("NS_He_ONe Flag   = ", flagONeNS)
+print("BH_He_ONe Flag   = ", flagONeBH)
 
+# Heavy Remnant Combos --------------------------------------
+flagNSNS = runtimeVals['NS_NS [13,13]']
+flagBHNS = runtimeVals['BH_NS [14,13]']
+flagBHBH = runtimeVals['BH_BH [14,14]']
+print("NS_NS Flag  = ", flagNSNS)
+print("BH_NS Flag  = ", flagBHNS)
+print("BH_BH Flag  = ", flagBHBH)
+
+# LISA Processing Inputs ------------------------------------
+# Stored for downstream script arguments / future Legwork calls
+sensCurveFile = runtimeVals['Sensitivity Curve FILENAME']
+Tobs          = runtimeVals['Tobs (YRS)']
+snrThreshold  = runtimeVals['SNR Threshold']
+alphaChirp    = runtimeVals['ALPHA (Fraction of bin for Chirp)']
+wdFLAG        = runtimeVals['wdFLAG (0: none, 1: CR, 2: HLRK, 3: HB)']
+csvFLAG       = runtimeVals['csvFLAG (0: no src sep; 1: sep by type)']
+
+# Shell / UNIX Move Flag ------------------------------------
+sllUNIX       = runtimeVals['sllUNIX']
 
 
 # ===========================================================
 # The different subpopulations
 # ===========================================================
-gx_components = ['ThinDisk', 'Bulge', 'ThickDisk']
-gxc_labels = ['Thin Disk', 'Bulge', 'Thick Disk'] # was gx_component_labels
+gx_components = []  # empty list to start building our galaxy components
+gxc_labels = []     # empty list for our component labels; was gx_component_labels
+
+if (makeThinDisk == 1):
+    gx_components.append('ThinDisk')
+    gxc_labels.append('Thin Disk')
+if (makeBulge == 1):
+    gx_components.append('Bulge')
+    gxc_labels.append('Bulge')
+if (makeThickDisk == 1):
+    gx_components.append('ThickDisk')
+    gxc_labels.append('Thick Disk')
 
 kstars = []                                  # empty list to start building our populations list
 kstarsName = []                              # empty list for population names
@@ -499,31 +482,24 @@ if fileformat == 'sep':
             datFileIN = '../gx_data/' + basename + '_' + kstarNameJJ + '_' + gx_componentII + '_metallicity_' + str(metComp) +'.h5'
             gx = pd.read_hdf(datFileIN, key='LISA_population')
         
-            # we drop a column present only for WDs, radius/RL radius which can be computed later by user if needed
-            # following Eggleton+1983 e.g.
-#            if kstarNameJJ in ['He_He','CO_He','CO_CO','ONe_He_ONe']:
-#                col_to_del.extend(['RL_1_final', 'RL_2_final'])
-#            elif kstarNameJJ in ['NS_He_ONe','BH_He_ONe']:
-#                col_to_del.append('RL_2_final')
-            gx = gx.drop(columns=col_to_del)
+            gx = gx.drop(columns=col_to_del, errors='ignore')
             
             # sll - 16 Jun 2023 -- added this so create a column with what gxComponent star came from
             gx['gxComponent'] = gx_componentII
-            gx.to_csv('../csv/'+ basename + '_' + kstarNameJJ + '_' + gx_componentII + '.csv', index=False)
         
             # some accounting: we add a `#` to the header, making it readable as such by C codes
             gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
-            gx.to_csv('../csv/'+ basename + '_' + kstarJJ + '_' + gx_componentII + '.csv', index=False)
-            print('  {:.2E} {} in the {}'.format(len(gx), kstarJJ, gx_componentII))
+            gx.to_csv('../csv/'+ basename + '_' + kstarNameJJ + '_' + gx_componentII + '.csv', index=False)
+            print('  {:.2E} {} in the {}'.format(len(gx), kstarNameJJ, gx_componentII))
 
 elif fileformat == 'comp':
     for gx_componentII in gx_components:
         if gx_componentII == 'ThickDisk':
-            metModel = metThick
+            metComp = metThick
         elif gx_componentII == 'Bulge':
-            metModel = metBulge
+            metComp = metBulge
         else:
-            metModel = metThin
+            metComp = metThin
         
         print('Now converting ', gx_componentII)
         # comp_gx = pd.DataFrame()
@@ -532,21 +508,20 @@ elif fileformat == 'comp':
             col_to_del = reject_col.copy()
             datFileIN = '../gx_data/' + basename + '_' + kstarNameJJ + '_' + gx_componentII + '_metallicity_' + str(metComp) +'.h5'
             gx = pd.read_hdf(datFileIN, key='LISA_population')
-
-            if kstarNameJJ in ['He_He','CO_He','CO_CO','ONe_He_ONe']:
-                col_to_del.extend(['RL_1_final', 'RL_2_final'])
-            elif kstarNameJJ in ['NS_He_ONe','BH_He_ONe']:
-                col_to_del.append('RL_2_final')   
-            gx = gx.drop(columns=col_to_del)
+            
+            gx = gx.drop(columns=col_to_del, errors='ignore')
 
             # sll - 16 Jun 2023 -- added this so create a column with what gxComponent star came from
             gx['gxComponent'] = gx_componentII
             print('  {:.2E} {} in the {}'.format(len(gx), kstarNameJJ, gx_componentII))
             comp_gx.append(gx)
 
-        comp_gx = pd.concat(comp_gx) # Convert list to dataframe, per Peggy Guo, 18 Dec 2023
-        comp_gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
-        comp_gx.to_csv('../csv/'+ basename + '_' + gx_componentII + '.csv', index=False)
+        if comp_gx:
+            comp_gx = pd.concat(comp_gx) # Convert list to dataframe, per Peggy Guo, 18 Dec 2023
+            comp_gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
+            comp_gx.to_csv('../csv/'+ basename + '_' + gx_componentII + '.csv', index=False)
+        else:
+            print('  No data found for component ', gx_componentII, '; skipping CSV.')
             
 elif fileformat == 'kstar':
     for kstarNameJJ in kstarNameLoop:
@@ -555,29 +530,30 @@ elif fileformat == 'kstar':
         kstar_gx = []       # make galaxy a list, per Peggy Guo solution to errors; 18 Dec 2023
         for gx_componentII in gx_components:
             if gx_componentII == 'ThickDisk':
-                metModel = metThick
+                metComp = metThick
             elif gx_componentII == 'Bulge':
-                metModel = metBulge
+                metComp = metBulge
             else:
-                metModel = metThin
+                metComp = metThin
             
             col_to_del = reject_col.copy()
             
             datFileIN = '../gx_data/' + basename + '_' + kstarNameJJ + '_' + gx_componentII + '_metallicity_' + str(metComp) +'.h5'
             gx = pd.read_hdf(datFileIN, key='LISA_population')
             
-            if kstarNameJJ in ['He_He','CO_He','CO_CO','ONe_He_ONe']:
-                col_to_del.extend(['RL_1_final', 'RL_2_final'])
-            elif kstarNameJJ in ['NS_He_ONe','BH_He_ONe']:
-                col_to_del.append('RL_2_final')   
-            gx = gx.drop(columns=col_to_del)
+            gx = gx.drop(columns=col_to_del, errors='ignore')
+            
             # sll - 16 Jun 2023 -- added this so create a column with what gxComponent star came from
-            gx['gxComponent'] = model
+            gx['gxComponent'] = gx_componentII
             print('  {:.2E} {} in the {}'.format(len(gx), kstarNameJJ, gx_componentII))
             kstar_gx.append(gx)
-        kstar_gx = pd.concat(kstar_gx)      # Convert list to dataframe, per Peggy Guo, 18 Dec 2023
-        kstar_gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
-        kstar_gx.to_csv('../csv/'+ basename + '_' +kstar+'.csv', index=False)
+            
+        if kstar_gx:
+            kstar_gx = pd.concat(kstar_gx)      # Convert list to dataframe, per Peggy Guo, 18 Dec 2023
+            kstar_gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
+            kstar_gx.to_csv('../csv/'+ basename + '_' + kstarNameJJ + '.csv', index=False)
+        else:
+            print('  No data found for population ', kstarNameJJ, '; skipping CSV.')
         
         
 elif fileformat == 'full':
@@ -598,11 +574,7 @@ elif fileformat == 'full':
             datFileIN = '../gx_data/' + basename + '_' + kstarNameJJ + '_' + gx_componentII + '_metallicity_' + str(metComp) +'.h5'
             gx = pd.read_hdf(datFileIN, key='LISA_population')
 
-            if kstarNameJJ in ['He_He','CO_He','CO_CO','ONe_He_ONe']:
-                col_to_del.extend(['RL_1_final', 'RL_2_final'])
-            elif kstarNameJJ in ['NS_He_ONe','BH_He_ONe']:
-                col_to_del.append('RL_2_final')   
-            gx = gx.drop(columns=col_to_del)
+            gx = gx.drop(columns=col_to_del, errors='ignore')
 
             # sll - 16 Jun 2023 -- added this so create a column with what gxComponent star came from
             gx['gxComponent'] = gx_componentII
@@ -610,9 +582,12 @@ elif fileformat == 'full':
             # print(type(full_gx))
             full_gx.append(gx)   # append gx to the list
 
-    full_gx = pd.concat(full_gx)      # Convert list to dataframe, per Peggy Guo, 18 Dec 2023
-    full_gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
-    full_gx.to_csv('../csv/'+ basename + '_' + 'full.csv', index=False)
+    if full_gx:
+        full_gx = pd.concat(full_gx)      # Convert list to dataframe, per Peggy Guo, 18 Dec 2023
+        full_gx.rename(columns = {'bin_num':'#bin_num'}, inplace = True)
+        full_gx.to_csv('../csv/'+ basename + '_' + 'full.csv', index=False)
+    else:
+        print('No data found for full galaxy; skipping full.csv.')
 
 
 
@@ -628,6 +603,5 @@ secondsElapsed = endRun - startRun     # total elapsed time in seconds
 
 print('----------------------------------\n')
 print('Ending run at: ',ctime(time()))
-print('Elapsed time: ', int(secondsElapsed // 3600),' HR ',int(secondsElapsed % 3600 % 60),' MIN\n')
+print('Elapsed time: ', int(secondsElapsed // 3600),' HR ',int((secondsElapsed % 3600) // 60),' MIN\n')
 print('==================================\n')
-

@@ -167,7 +167,7 @@ run_component_pops() {
             header_label="THICK DISK"
             done_label="Thick Disk"
             skip_label="THICK DISK POPULATIONS"
-            ini_file="../buildFiles/thick_Params.ini"
+            ini_file="../buildFiles/thickDisk_Params.ini"
             target_subdir="fixed_thickDisk"
             ;;
         makeThinDisk)
