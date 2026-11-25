@@ -72,6 +72,8 @@ mkdir ../fixed
 
 mkdir ../gx_data
 
+mkdir ../errLogs
+
 mkdir ../csv
 
 mkdir ../fixed/fixed_bulge
@@ -91,7 +93,7 @@ echo
 echo "Making Fixed Populations."
 echo
 
-./makeFixedPops_SLLunix.sh >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
+./makeFixedPops.sh >> ../errLogs/log01_Fixed.log 2>> ../errLogs/err01_Fixed.log < /dev/null
 
 echo "Fixed Populations complete."
 NOW=$(date)

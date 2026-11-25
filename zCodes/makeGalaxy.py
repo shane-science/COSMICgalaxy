@@ -16,6 +16,10 @@
 #     for "Generate a population the COSMIC way"
 #     with guidance from Julie Malewicz Jupyter Notebook
 #     scale-to-MW-COSMIC3.ipynb
+# 10/31/2022
+# Modifications: Natalie Gottschlich (nataliegottschlich2022@u.northwestern.edu)
+#  -- Changed variable 'model' to 'gx_component' to avoid degeneracy with mc_samp
+#  -- Likewise changed 'metModel' to 'metComp'
 #
 # MODIFICATIONS from SLL:
 # (0) Deleted all plotting routines during dev (clarify debugging)
@@ -34,13 +38,10 @@
 # (5) (gitCommit) 21 May 2025: debugged version, now runs throgh with WD,NS,BH
 #     now under git version control, filenames simplifed.
 #-----------------------------------------------------------------------------
+# NOV 2026: Updated and streamlined parsing of new cosmicRuntimeValues.txt
+#           which was updated with flags for making fixed popuatlions.
 #
-# 10/31/2022
-# Modifications: Natalie Gottschlich (nataliegottschlich2022@u.northwestern.edu)
-#  -- Changed variable 'model' to 'gx_component' to avoid degeneracy with mc_samp
-#  -- Likewise changed 'metModel' to 'metComp'
-
-
+#-----------------------------------------------------------------------------
 
 '''`makeGalaxy`
 '''
@@ -113,168 +114,159 @@ dat_save_path = '../gx_data/'
 # ===========================================================
 #    (sll) 23 Sep 2024: combined "gxInputs.txt" and "gxProcess.txt"
 #       into a single file that needs edited, to streamline
+#    Updated parser: loops over all non-comment ('#'), non-blank
+#       lines and stores right-hand side of '=' in runtimeVals
+#       so new flags can be added without breaking line counts.
 # ===========================================================
 
 startRun = time()  # get the starting time in seconds for elapsed time calculation
 print('==================================\n')
 print('Starting run at: ',ctime(time()))
 
+runtimeVals = {}   # dictionary to store key = value pairs from cosmicRuntimeValues.txt
+
 with open('../buildFiles/cosmicRuntimeValues.txt','r') as gxInputs:
-    # First, read in the basename for all files in this run
-    dataLine = gxInputs.readline()  # read 1 line -- 1st comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 2nd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 3rd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 4th comment line
-    dataLine = gxInputs.readline()  # read blankline
-    dataLine = gxInputs.readline()           # read in dataline
-    parseLine = dataLine.split("=")           # parses line around the = sign
-    basename = str(parseLine[-1]).strip()     # rstrip removes trailing \n
-    print("Galaxy Basename  = ", basename)    # echo to screen
+    for rawLine in gxInputs:
+        dataLine = rawLine.strip()              # remove leading/trailing whitespace and \n
+        
+        # skip blank lines and comment lines starting with '#'
+        if not dataLine or dataLine.startswith('#'):
+            continue
+        
+        # parse any valid 'key = value' line around the first '=' sign
+        if '=' in dataLine:
+            parseKey, parseVal = dataLine.split('=', 1)
+            parseKey = parseKey.strip()
+            parseVal = parseVal.strip()
+            
+            # auto-cast numeric strings to int/float; keep filepaths and names as str
+            try:
+                if '.' in parseVal or 'e' in parseVal.lower():
+                    runtimeVals[parseKey] = float(parseVal)
+                else:
+                    runtimeVals[parseKey] = int(parseVal)
+            except ValueError:
+                runtimeVals[parseKey] = parseVal
 
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read blankline
+# Unpack parsed runtime values into named script variables
+# Basename -------------------------------------------------
+basename = str(runtimeVals['Galaxy File (BASENAME no extension)'])
+print("Galaxy Basename  = ", basename)        # echo to screen
 
-    # Next, reading in the inputs for the galaxy model
-    dataLine = gxInputs.readline()  # read 1 line -- 1st comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 2nd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 3rd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 4th comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 5th comment line
+# Star Formation Lines -------------------------------------
+SF_start = float(runtimeVals['SF start (Myr)'])
+print("SF Start (Myr)   = ", SF_start)        # echo to screen
 
-    # Star Formation Lines ----------------------------------
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read in dataline
-    parseLine = dataLine.split("=")         # parses line around the = sign
-    SF_start = float(parseLine[-1])         # store the number
-    print("SF Start (Myr)   = ", SF_start)  # echo to screen
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    SF_duration = float(parseLine[-1])
-    print("SF Duration (Myr)   = ", SF_duration)
-   
-    starFormation = 'SFstart_' + str(SF_start)  + '_SFduration_' +  str(SF_duration)     # construct the filename bit with Star Formation
-    print("Star Formation file tag  = ", starFormation)
-    
-    dataLine = gxInputs.readline()          # read blankline
+SF_duration = float(runtimeVals['SF duration (Myr)'])
+print("SF Duration (Myr)   = ", SF_duration)
 
-    # Metallicities ----------------------------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    metThin = float(parseLine[-1])
-    print("Thin Disk Metallicity   = ", metThin)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    metBulge = float(parseLine[-1])
-    print("Bulge Metallicity       = ", metBulge)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    metThick = float(parseLine[-1])
-    print("Thick Disk Metallicity  = ", metThick)
-    
-    dataLine = gxInputs.readline()          # read blankline
+starFormation = 'SFstart_' + str(SF_start)  + '_SFduration_' +  str(SF_duration)     # construct the filename bit with Star Formation
+print("Star Formation file tag  = ", starFormation)
 
-    # Pathways to Fixed Population Files ---------------------
-    dataLine = gxInputs.readline()          # read in dataline
-    parseLine = dataLine.split("=")         # parses line around the = sign
-    dat_path_1 = str(parseLine[-1]).strip() # rstrip removes trailing \n
-    print("thin disk PATH  = ", dat_path_1) # echo to screen
-    
-    dataLine = gxInputs.readline()          # read blankline
-    parseLine = dataLine.split("=")
-    dat_path_2 = str(parseLine[-1]).strip()
-    print("bulge PATH      = ", dat_path_2)
-    
-    dataLine = gxInputs.readline()          # read blankline
-    parseLine = dataLine.split("=")
-    dat_path_3 = str(parseLine[-1]).strip()
-    print("thick disk PATH = ", dat_path_3)
-    
-    dataLine = gxInputs.readline()          # read blankline
+# Metallicities --------------------------------------------
+metThin = float(runtimeVals['thinDisk metal'])
+print("Thin Disk Metallicity   = ", metThin)
 
-    # Galaxy Generation RANDOM SEED ---------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    gxSeed = int(parseLine[-1])
-    print("galaxy generation random seed  = ", gxSeed)
-    print("fixed pop info retrieved\n", flush=True) # flush -- force stdout so I know its running
+metBulge = float(runtimeVals['bulge metal'])
+print("Bulge Metallicity       = ", metBulge)
 
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read blankline
+metThick = float(runtimeVals['thickDisk metal'])
+print("Thick Disk Metallicity  = ", metThick)
 
-    # Next, reading in the inputs for the sub-populations
-    dataLine = gxInputs.readline()  # read 1 line -- 1st comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 2nd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 3rd comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 4th comment line
-    dataLine = gxInputs.readline()  # read 1 line -- 5th comment line
-    
-    dataLine = gxInputs.readline()          # read blankline
+# Pathways to Fixed Population Files -----------------------
+dat_path_1 = str(runtimeVals['thinDisk Path'])
+print("thin disk PATH  = ", dat_path_1)       # echo to screen
 
-    # Common White Dwarf Combos ------------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagHeHe = int(parseLine[-1])
-    print("He_He Flag  = ", flagHeHe)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagCoHe = int(parseLine[-1])
-    print("CO_He Flag  = ", flagCoHe)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagCoCo = int(parseLine[-1])
-    print("CO_CO Flag  = ", flagCoCo)
-    
-    # Less Common White Dwarf Combos -------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagONeWD = int(parseLine[-1])
-    print("ONe_He_ONe Flag  = ", flagONeWD)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagONeNS = int(parseLine[-1])
-    print("NS_He_ONe Flag  = ", flagONeNS)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagONeBH = int(parseLine[-1])
-    print("BH_He_ONe Flag  = ", flagONeBH)
+dat_path_2 = str(runtimeVals['bulge Path'])
+print("bulge PATH      = ", dat_path_2)
 
-    # Heavy Remnant Combos ------------------------
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagNSNS = int(parseLine[-1])
-    print("NS_NS Flag  = ", flagNSNS)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagBHNS = int(parseLine[-1])
-    print("BH_NS Flag  = ", flagBHNS)
-    
-    dataLine = gxInputs.readline()
-    parseLine = dataLine.split("=")
-    flagBHBH = int(parseLine[-1])
-    print("BH_BH Flag  = ", flagBHBH)
-    
-    dataLine = gxInputs.readline()          # read blankline
-    dataLine = gxInputs.readline()          # read blankline
+dat_path_3 = str(runtimeVals['thickDisk Path'])
+print("thick disk PATH = ", dat_path_3)
 
-    # Next, reading in the LISA Processing Specifications
-    # No read here; currently not used in python scripts
-    # FUTURE PLAN: Make calling Legwork an option?
+# Galaxy Generation RANDOM SEED ----------------------------
+gxSeed = int(runtimeVals['random Seed'])
+print("galaxy generation random seed  = ", gxSeed)
+print("fixed pop info retrieved\n", flush=True) # flush -- force stdout so I know its running
 
+# Galaxy Component Flags -----------------------------------
+makeBulge = int(runtimeVals['makeBulge'])
+print("makeBulge Flag      = ", makeBulge)
+
+makeThinDisk = int(runtimeVals['makeThinDisk'])
+print("makeThinDisk Flag   = ", makeThinDisk)
+
+makeThickDisk = int(runtimeVals['makeThickDisk'])
+print("makeThickDisk Flag  = ", makeThickDisk)
+
+# Common White Dwarf Combos --------------------------------
+flagHeHe = int(runtimeVals['He_He [10,10]'])
+print("He_He Flag  = ", flagHeHe)
+
+flagCoHe = int(runtimeVals['CO_He [11,10]'])
+print("CO_He Flag  = ", flagCoHe)
+
+flagCoCo = int(runtimeVals['CO_CO [11,11]'])
+print("CO_CO Flag  = ", flagCoCo)
+
+# Less Common White Dwarf Combos ---------------------------
+flagONeWD = int(runtimeVals['ONe_He_ONe [12,10,12]'])
+print("ONe_He_ONe Flag  = ", flagONeWD)
+
+flagONeNS = int(runtimeVals['NS_He_ONe [13,10,12]'])
+print("NS_He_ONe Flag  = ", flagONeNS)
+
+flagONeBH = int(runtimeVals['BH_He_ONe  [14,10,12]'])
+print("BH_He_ONe Flag  = ", flagONeBH)
+
+# Heavy Remnant Combos -------------------------------------
+flagNSNS = int(runtimeVals['NS_NS [13,13]'])
+print("NS_NS Flag  = ", flagNSNS)
+
+flagBHNS = int(runtimeVals['BH_NS [14,13]'])
+print("BH_NS Flag  = ", flagBHNS)
+
+flagBHBH = int(runtimeVals['BH_BH [14,14]'])
+print("BH_BH Flag  = ", flagBHBH)
+
+# LISA Processing Specifications ---------------------------
+# Stored from runtime file for downstream processing / Legwork calls
+sensCurveFile = str(runtimeVals['Sensitivity Curve FILENAME'])
+Tobs          = float(runtimeVals['Tobs (YRS)'])
+snrThresh     = float(runtimeVals['SNR Threshold'])
+alphaChirp    = float(runtimeVals['ALPHA (Fraction of bin for Chirp)'])
+wdFLAG        = int(runtimeVals['wdFLAG (0: none, 1: CR, 2: HLRK, 3: HB)'])
+csvFLAG       = int(runtimeVals['csvFLAG (0: no src sep; 1: sep by type)'])
+
+print("LISA Sensitivity Curve = ", sensCurveFile)
+print("LISA Tobs (yrs)        = ", Tobs)
+print("LISA SNR Threshold     = ", snrThresh)
+print("LISA ALPHA             = ", alphaChirp)
+print("LISA wdFLAG            = ", wdFLAG)
+print("LISA csvFLAG           = ", csvFLAG)
+ # LISA stuff currently not used in this python script
+ # FUTURE PLAN: Make calling Legwork an option?
+
+
+# Unix Environment Flag ------------------------------------
+sllUNIX = int(runtimeVals['sllUNIX'])
+print("sllUNIX Flag           = ", sllUNIX, "\n", flush=True)
 
 
 # ===========================================================
 # The different subpopulations
 # ===========================================================
-gx_components = ['ThinDisk', 'Bulge', 'ThickDisk']
-gxc_labels = ['Thin Disk', 'Bulge', 'Thick Disk'] # was gx_component_labels
+gx_components = []  # empty list to start building our galaxy components
+gxc_labels = []     # empty list for our component labels; was gx_component_labels
+
+if (makeThinDisk == 1):
+    gx_components.append('ThinDisk')
+    gxc_labels.append('Thin Disk')
+if (makeBulge == 1):
+    gx_components.append('Bulge')
+    gxc_labels.append('Bulge')
+if (makeThickDisk == 1):
+    gx_components.append('ThickDisk')
+    gxc_labels.append('Thick Disk')
 
 kstars = []                                  # empty list to start building our populations list
 kstarsName = []                              # empty list for population names
@@ -532,4 +524,3 @@ print('----------------------------------\n')
 print('Ending run at: ',ctime(time()))
 print('Elapsed time: ', int(secondsElapsed // 3600),' HR ',int(secondsElapsed % 3600 % 60),' MIN\n')
 print('==================================\n')
-
